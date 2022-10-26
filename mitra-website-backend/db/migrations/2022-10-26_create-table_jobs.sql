@@ -1,0 +1,23 @@
+CREATE TABLE public.jobs(
+	id UUID NOT NULL DEFAULT uuid_generate_v4(),
+	"jobRole" character varying(255) NOT NULL,
+	"jobDescription" character varying(255) NOT NULL,
+    "requirements" jsonb,
+	"baseSalary" character varying(255) NOT NULL,
+    "maxEarnings" character varying(255) NOT NULL,
+    "JoiningBonus" character varying(255),
+    "referralBonus" character varying(255),
+    "benefitsMetadata" jsonb,
+    "isPartTimeAvailable" character varying(255),
+    "companyId" UUID REFERENCES public.companies (id),
+    "cityId" UUID REFERENCES public.cities (id),
+    "jobLink" character varying(255),
+    "jobType" character varying(255),
+    "jobLocation" character varying(255),
+    "contactPersonName" character varying(255),
+    "contactPersonPhoneNumber" character varying(255),
+    "createdAt" timestamp with time zone NOT NULL DEFAULT now(),
+    "updatedAt" timestamp with time zone NOT NULL,
+    "deletedAt" timestamp with time zone,
+    CONSTRAINT pkey_jobs PRIMARY KEY (id)
+);
