@@ -1,0 +1,13 @@
+// FOR REDIS WE USE LOWERCASE AND FOR DATABASE WE USE UPPER CASE.
+
+const LATEST_SMS_OTP = 'latest_sms_otp';
+const USER_SESSIONS = {
+    ACTIVE : 'ACTIVE',
+    CLOSED : 'CLOSED'
+}
+module.exports = {
+    LATEST_SMS_OTP,
+    USER_SESSIONS
+}
+
+
