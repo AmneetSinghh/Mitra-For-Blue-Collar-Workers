@@ -17,6 +17,16 @@ async function getDocumentVerificationStatusByUserIdAndJobId(userid,jobid) {
     return null;
 }
 
+async function getDocumentVerificationAndJobsStatusByUserId(userid) {// from new to old.
+    const jobs = await pool.query("select j.* from document_verification dc "+
+    "JOIN jobs j on dc.jobid = j.id where dc.userid =$1 order by dc.createdat desc ",
+        [userid]
+    );
+    if (jobs && jobs.rows.length > 0) {
+        return jobs.rows;
+    }
+    return null;
+}
 
 async function insertIntoDocumentVerification(userid,jobid,status) {
     const documentVerification = await pool.query("INSERT INTO document_verification(id,userid,jobid,status,createdat,updatedat,deletedat"
@@ -28,5 +38,6 @@ async function insertIntoDocumentVerification(userid,jobid,status) {
 module.exports = {
     getJobs,
     getDocumentVerificationStatusByUserIdAndJobId,
-    insertIntoDocumentVerification
+    insertIntoDocumentVerification,
+    getDocumentVerificationAndJobsStatusByUserId
 };

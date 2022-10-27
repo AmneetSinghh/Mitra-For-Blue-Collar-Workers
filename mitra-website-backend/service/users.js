@@ -11,8 +11,18 @@ async function getUserByPhonNumber(phonenumber) {
     return null;
 }
 
+async function getUserByUserId(userid) {
+    const user = await pool.query("SELECT u.*,c.name as city  from users u join cities c on u.cityid = c.id where u.id=$1",
+        [userid]
+    );
+    if (user && user.rows.length > 0) {
+        return user.rows;
+    }
+    return null;
+}
 
 
 module.exports = {
     getUserByPhonNumber,
+    getUserByUserId
 };
