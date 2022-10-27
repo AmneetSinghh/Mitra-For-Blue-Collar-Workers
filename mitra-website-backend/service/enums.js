@@ -19,12 +19,28 @@ const JOB_STATUS_LEVELS = {
     SCHEDULED_INTERVIEWS : 'SCHEDULED_INTERVIEWS',
     HIRED : 'HIRED'
 }
+
+const REFERRAL_STATUS = {
+    INITIATED : 'INITIATED',
+    PENDING :   'PENDING',
+    PROGRESS : 'IN PROGRESS',
+    REFERRED : 'REFERRED'
+}
+
+const DOCUMENTS = {
+    ADHARCARD : 'adharcard',
+    PANCARD :   'pancard',
+    DRIVING_LICENSE : 'drivinglicense',
+}
+
 module.exports = {
     LATEST_SMS_OTP,
     USER_SESSIONS,
     JOB_STATUSES,
     JOB_STATUS_LEVELS,
-    CURRENT_JOB_STATUS
+    CURRENT_JOB_STATUS,
+    REFERRAL_STATUS,
+    DOCUMENTS
 }
 
 

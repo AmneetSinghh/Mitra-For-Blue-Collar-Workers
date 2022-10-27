@@ -7,9 +7,10 @@ const otpLib = require("./service/otp");
 const redisLib = require("./service/redis");
 const enums = require("./service/enums");
 const userLib = require("./service/users");
-const companyLib = require("./service/company")
-const jobLib = require("./service/jobs")
-const userSessionsLib = require("./service/userSessions")
+const companyLib = require("./service/company");
+const jobLib = require("./service/jobs");
+const userSessionsLib = require("./service/userSessions");
+const referralLib = require("./service/referral");
 
 const { getUserByPhonNumber } = require("./service/users");
 const { user } = require("pg/lib/defaults");
@@ -304,6 +305,48 @@ app.get("/profile/userDetails", async (req, res) => {
         return res.json({ message: err.message, status: 'failure', payload: null });
     }
 })
+
+
+
+// ************************************************* REFERRALS **************************************************************************
+app.post("/refer", async (req, res) => {
+    try {
+
+        const {referrerUserId, referralPhoneNumber} = req.body;
+        await referralLib.insertIntoReferrals(referrerUserId,referralPhoneNumber,enums.REFERRAL_STATUS.INITIATED)
+        return res.json({ message: 'referred', status: 'success', payload: null });
+    } catch (err) {
+        console.log(err.message);
+        return res.json({ message: err.message, status: 'failure', payload: null });
+    }
+})
+
+app.get("/countReferrals", async (req, res) => {
+    try {
+        const userid = req.param('userid');
+        const referrals = await referralLib.getNumberOfReferralsByUserId(userid);
+        let initiated=[],pending=[],progress=[],referred=[];
+        for(let i=0;i<referrals.length;i++){
+            if(referrals[i].status === enums.REFERRAL_STATUS.INITIATED){
+                initiated.push(referrals[i]);
+            }
+            if(referrals[i].status === enums.REFERRAL_STATUS.PENDING){
+                pending.push(referrals[i]);
+            }
+            if(referrals[i].status === enums.REFERRAL_STATUS.PROGRESS){
+                initiated.push(progress[i]);
+            }
+            if(referrals[i].status === enums.REFERRAL_STATUS.REFERRED){
+                referred.push(referrals[i]);
+            }
+        }
+        return res.json({ message: null, status: 'success', initiated,pending,progress,referred });
+    } catch (err) {
+        console.log(err.message);
+        return res.json({ message: err.message, status: 'failure', payload: null });
+    }
+})
+
 
 app.listen(5000, () => {
     console.log("Server has started on port 5000");
