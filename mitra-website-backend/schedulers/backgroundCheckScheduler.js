@@ -1,18 +1,7 @@
 const cron = require('node-cron');
 const jobLib = require("../service/jobs");
 const enums = require("../service/enums");
-const redisLib = require("../service/redis");
 
-
-async function updateJobStatusInRedis(userId, jobId, level, status, message) {
-    let jobStatus = {
-        level: level,
-        status: status,
-        message: message
-    }
-    const redis = await redisLib.redisClient();
-    await redis.set(enums.CURRENT_JOB_STATUS + '_' + jobId + '_' + userId, JSON.stringify(jobStatus));
-}
 /*
 users_table               jobs_requirements
 qualification        :       education
@@ -76,13 +65,13 @@ async function backgroundCheckScheduler() {
                 await jobLib.insertIntoUserJobLevelFailures(backgroundCheck[i].userid,
                     backgroundCheck[i].jobid, enums.JOB_STATUS_LEVELS.BACKGROUND_CHECK, reasonoffailure);
                 // update the status into redis.    
-                await updateJobStatusInRedis(backgroundCheck[i].userid, backgroundCheck[i].jobid, enums.JOB_STATUS_LEVELS.BACKGROUND_CHECK, enums.JOB_STATUSES.FAILED, reasonoffailure);
+                await jobLib.updateJobStatusInRedis(backgroundCheck[i].userid, backgroundCheck[i].jobid, enums.JOB_STATUS_LEVELS.BACKGROUND_CHECK, enums.JOB_STATUSES.FAILED, reasonoffailure);
             }
             else {
                 // update backgroundCheck status
                 await jobLib.updateBackgroundCheckStatus(enums.JOB_STATUSES.PASSED, backgroundCheck[i].userid, backgroundCheck[i].jobid);
                 // update the status into redis.    
-                await updateJobStatusInRedis(backgroundCheck[i].userid, backgroundCheck[i].jobid, enums.JOB_STATUS_LEVELS.SCHEDULED_INTERVIEWS, enums.JOB_STATUSES.PENDING, '');
+                await jobLib.updateJobStatusInRedis(backgroundCheck[i].userid, backgroundCheck[i].jobid, enums.JOB_STATUS_LEVELS.SCHEDULED_INTERVIEWS, enums.JOB_STATUSES.PENDING, '');
                 // add into scheduled inerviews check with status pending
                 await jobLib.insertIntoScheduledInterviews(backgroundCheck[i].userid, backgroundCheck[i].jobid, enums.JOB_STATUSES.PENDING);
             }
@@ -97,3 +86,4 @@ async function backgroundCheckScheduler() {
 
 
 cron.schedule("*/10 * * * * *", async () => backgroundCheckScheduler());// run every 10 seconds. in Actual we have to run 1 time in night in one day.
+

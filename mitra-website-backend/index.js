@@ -11,6 +11,8 @@ const companyLib = require("./service/company");
 const jobLib = require("./service/jobs");
 const userSessionsLib = require("./service/userSessions");
 const referralLib = require("./service/referral");
+const backgroundCheckScheduler = require("./schedulers/backgroundCheckScheduler");
+
 
 const { getUserByPhonNumber } = require("./service/users");
 const { user } = require("pg/lib/defaults");
@@ -59,7 +61,7 @@ app.get("/get/cities", async (req, res) => {
 })
 
 
-// ************************************************* users *************************************************
+// ************************************************* sign up and login  *************************************************
 
 // // register the user,
 app.post("/register/user", async (req, res) => {
@@ -131,7 +133,7 @@ app.post("/login/user", async (req, res) => {
 
 
 
-//********************************************************jobs ************************************* */
+//*******************************************************  JOBS *********** ************************************* */
 
 
 // // insert the jobs,
@@ -209,6 +211,7 @@ app.post("/apply/job", async (req, res) => {
     }
 })
 
+// ******************************************************* JOBS STATUS *******************************************************************888
 
 app.get("/get/jobStatus", async (req, res) => {
     try {
@@ -236,7 +239,25 @@ app.get("/get/jobStatus", async (req, res) => {
 })
 
 
+app.post("/update/scheduledInterviewStatus", async (req, res) => {
+    try {
+        const {userid,jobid,status,message} = req.body;
+        await jobLib.updateSchduledInterviewsStatus(status, userid,jobid);
+        if(status === enums.JOB_STATUSES.FAILED){
+            await jobLib.insertIntoUserJobLevelFailures(userid,jobid, enums.JOB_STATUS_LEVELS.SCHEDULED_INTERVIEWS, message);
+            await jobLib.updateJobStatusInRedis(userid,jobid, enums.JOB_STATUS_LEVELS.SCHEDULED_INTERVIEWS, enums.JOB_STATUSES.FAILED, message);
+        }
+        else{
+            // candidate is hired by the company.
+            await jobLib.updateJobStatusInRedis(userid,jobid, enums.JOB_STATUS_LEVELS.HIRED, enums.JOB_STATUSES.PASSED, '');
+        }
 
+        return res.json({ message: 'updated status for candidate', status: 'success', payload: null });
+    } catch (err) {
+        console.log(err.message);
+        return res.json({ message: err.message, status: 'failure', payload: null });
+    }
+})
 
 
 // ************************************************* PROFILE **************************************************************************
@@ -346,6 +367,7 @@ app.get("/countReferrals", async (req, res) => {
         return res.json({ message: err.message, status: 'failure', payload: null });
     }
 })
+
 
 
 app.listen(5000, () => {

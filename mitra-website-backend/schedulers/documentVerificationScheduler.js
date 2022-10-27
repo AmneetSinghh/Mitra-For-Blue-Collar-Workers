@@ -1,19 +1,6 @@
 const cron = require('node-cron');
 const jobLib = require("../service/jobs");
 const enums = require("../service/enums");
-const redisLib = require("../service/redis");
-
-
-async function updateJobStatusInRedis(userId,jobId,level,status,message){
-    let jobStatus={
-        level : level,
-        status : status,
-        message : message
-    }
-    const redis = await redisLib.redisClient();
-    await redis.set(enums.CURRENT_JOB_STATUS + '_' + jobId + '_' + userId, JSON.stringify(jobStatus));
-}
-
 
 
 async function documentVerificationScheduler() {
@@ -46,7 +33,7 @@ async function documentVerificationScheduler() {
                     await jobLib.insertIntoUserJobLevelFailures(documentVerification[i].userid,
                     documentVerification[i].jobid,enums.JOB_STATUS_LEVELS.DOCUMENT_VERIFICATION,reasonoffailure);
                     // update the status into redis.    
-                    await updateJobStatusInRedis(documentVerification[i].userid,documentVerification[i].jobid,enums.JOB_STATUS_LEVELS.DOCUMENT_VERIFICATION,enums.JOB_STATUSES.FAILED,reasonoffailure);
+                    await jobLib.updateJobStatusInRedis(documentVerification[i].userid,documentVerification[i].jobid,enums.JOB_STATUS_LEVELS.DOCUMENT_VERIFICATION,enums.JOB_STATUSES.FAILED,reasonoffailure);
     
                 }
             }
@@ -55,7 +42,7 @@ async function documentVerificationScheduler() {
                 // update documentverification status
                 await jobLib.updateDocumentVerificationStatus(enums.JOB_STATUSES.PASSED,documentVerification[i].userid,documentVerification[i].jobid);
                 // update the status into redis.    
-                await updateJobStatusInRedis(documentVerification[i].userid,documentVerification[i].jobid,enums.JOB_STATUS_LEVELS.BACKGROUND_CHECK,enums.JOB_STATUSES.PENDING,'');
+                await jobLib.updateJobStatusInRedis(documentVerification[i].userid,documentVerification[i].jobid,enums.JOB_STATUS_LEVELS.BACKGROUND_CHECK,enums.JOB_STATUSES.PENDING,'');
                 // add into background check with status pending
                 await jobLib.insertIntoBackgroundCheck(documentVerification[i].userid,documentVerification[i].jobid,enums.JOB_STATUSES.PENDING);
             }

@@ -1,4 +1,7 @@
 const pool = require("../db/connection");
+const redisLib = require("../service/redis");
+const enums = require("../service/enums");
+
 
 
 async function getJobs() {
@@ -66,6 +69,12 @@ async function updateBackgroundCheckStatus(status,userid,jobid) {// from new to 
     );
 }
 
+async function updateSchduledInterviewsStatus(status,userid,jobid) {// from new to old.
+    await pool.query("UPDATE scheduled_interviews SET status = $1 WHERE userid = $2 and jobid = $3 ",
+        [status,userid,jobid]
+    );
+}
+
 async function insertIntoDocumentVerification(userid, jobid, status) {
     const documentVerification = await pool.query("INSERT INTO document_verification(id,userid,jobid,status,createdat,updatedat,deletedat"
         + ") VALUES(uuid_generate_v4(),$1,$2,$3,now(),now(),null) RETURNING *",
@@ -97,6 +106,15 @@ async function insertIntoUserJobLevelFailures(userid, jobid, failurelevel,reason
     );
 }
 
+async function updateJobStatusInRedis(userId, jobId, level, status, message) {
+    let jobStatus = {
+        level: level,
+        status: status,
+        message: message
+    }
+    const redis = await redisLib.redisClient();
+    await redis.set(enums.CURRENT_JOB_STATUS + '_' + jobId + '_' + userId, JSON.stringify(jobStatus));
+}
 
 module.exports = {
     getJobs,
@@ -109,5 +127,7 @@ module.exports = {
     insertIntoBackgroundCheck,
     getBackgroundCheckAndJobsStatusByStatus,
     updateBackgroundCheckStatus,
-    insertIntoScheduledInterviews
+    insertIntoScheduledInterviews,
+    updateSchduledInterviewsStatus,
+    updateJobStatusInRedis
 };
