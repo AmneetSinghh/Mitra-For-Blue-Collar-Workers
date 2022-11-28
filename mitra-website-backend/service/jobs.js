@@ -5,7 +5,7 @@ const enums = require("../service/enums");
 
 
 async function getJobs() {
-    const jobs = await pool.query("SELECT * from jobs;");
+    const jobs = await pool.query("select j.*,c.name as companyname,cty.name as cityname from jobs j join companies c on j.companyid=c.id join cities cty on j.cityid=cty.id;");
     return jobs.rows;
 }
 
@@ -21,8 +21,8 @@ async function getDocumentVerificationStatusByUserIdAndJobId(userid, jobid) {
 }
 
 async function getDocumentVerificationAndJobsStatusByUserId(userid) {// from new to old.
-    const jobs = await pool.query("select j.* from document_verification dc " +
-        "JOIN jobs j on dc.jobid = j.id where dc.userid =$1 order by dc.createdat desc ",
+    const jobs = await pool.query("select j.*,c.name as companyname from document_verification dc " +
+        "JOIN jobs j on dc.jobid = j.id JOIN companies c on j.companyid = c.id where dc.userid =$1 order by dc.createdat desc ",
         [userid]
     );
     if (jobs && jobs.rows.length > 0) {

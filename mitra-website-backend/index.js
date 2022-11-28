@@ -36,6 +36,7 @@ app.post("/add/company", async (req, res) => {
 // ************************************************* city *************************************************
 app.post("/add/city", async (req, res) => {
     try {
+        console.log("Hitting add cities api")
         const { name, pincode, stateName } = req.body;
         console.log(name, pincode, stateName);
         const city = await pool.query("INSERT INTO cities(id,name,pincode,statename,createdat,updatedat,deletedat"
@@ -52,7 +53,7 @@ app.post("/add/city", async (req, res) => {
 app.get("/get/cities", async (req, res) => {
     try {
         const city = await cityLib.getCities();
-        console.log(city);
+        // console.log(city);
         return res.json(city.rows);
     } catch (err) {
         console.log(err.message);
@@ -66,28 +67,32 @@ app.get("/get/cities", async (req, res) => {
 // // register the user,
 app.post("/register/user", async (req, res) => {
     try {
-        const { firstName, lastName, phoneNumber, email, dob, gender, age, motherName, fatherName, city, presentAddress, pancard, adharcard, drivingLicense, qualification,
-            experience, currentEmployeer, currentJobRole, salaryPerMonth, languageComfortable, resumeLink } = req.body;
+        const { firstname, lastname, phonenumber, email, dob, gender, age, mothername, fathername, city, presentaddress, pancard, adharcard, drivinglicense, qualification,
+            experience, currentemployeer, currentjobrole, salarypermonth, languagecomfortable, resumelink } = req.body;
 
+        
         // check user already registered.
-        const isUserPresent = await userLib.getUserByPhonNumber(phoneNumber);
+        const isUserPresent = await userLib.getUserByPhonNumber(phonenumber);
         if (isUserPresent) {
             throw new Error('User already exists. Please login into our website');
         }
         // check if city is present or not.
-        const cityId = await cityLib.getCityIdByName(city);
-        if (!cityId) {
-            throw new Error('city not found');
+        let cityid=null;
+        if(city != null){
+            cityid = await cityLib.getCityIdByName(city);
+            if (!cityid) {
+                throw new Error('city not found');
+            }
         }
         const user = await pool.query("INSERT INTO users(id,firstname,lastname,phonenumber,email,dob,gender,age,mothername,fathername,cityid,presentaddress,"
             + "pancard,adharcard,drivinglicense,qualification,experience,currentemployeer,currentjobrole,salarypermonth,languagecomfortable,resumelink,createdat,updatedat,deletedat"
             + ")VALUES(uuid_generate_v4(),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,now(),now(),null) RETURNING *",
-            [firstName, lastName, phoneNumber, email,
-                dob, gender, age, motherName, fatherName,
-                cityId, presentAddress, pancard,
-                adharcard, drivingLicense, qualification,
-                experience, currentEmployeer, currentJobRole,
-                salaryPerMonth, languageComfortable, resumeLink]
+            [firstname, lastname, phonenumber, email,
+                dob, gender, age, mothername, fathername,
+                cityid, presentaddress, pancard,
+                adharcard, drivinglicense, qualification,
+                experience, currentemployeer, currentjobrole,
+                salarypermonth, languagecomfortable, resumelink]
         );
         return res.json({ message: 'user registed with mitra successfully', status: 'success', payload: user.rows });
     } catch (err) {
@@ -98,10 +103,11 @@ app.post("/register/user", async (req, res) => {
 
 app.post("/send/opt", async (req, res) => {
     try {
-        const { phoneNumber, userId } = req.body;
-        const otp = await otpLib.sendOtpToPhoneNumber(phoneNumber);
+        const { phonenumber, userid } = req.body;
+        console.log(phonenumber,userid);
+        const otp = await otpLib.sendOtpToPhoneNumber(phonenumber);
         const redis = await redisLib.redisClient();
-        redis.set(enums.LATEST_SMS_OTP + '_' + userId, otp);
+        redis.set(enums.LATEST_SMS_OTP + '_' + userid, otp);
         return res.json({ message: 'Otp sent successfully', status: 'success' });
     } catch (err) {
         console.log(err.message);
@@ -112,6 +118,13 @@ app.post("/send/opt", async (req, res) => {
 app.post("/login/user", async (req, res) => {
     try {
         const { phonenumber, userid, otp } = req.body;
+        // already logined into our website, then why again and again
+        const userSession = await userSessionsLib.getLatestUserSession(userid);
+        console.log(userSession)
+        if (userSession === enums.USER_SESSIONS.ACTIVE) {
+            return res.json({ message: 'You already login into our website', status: 'success' });
+        }
+
         const user = await userLib.getUserByPhonNumber(phonenumber);
         if (!user) {
             throw new Error('phonenumber not found');
@@ -171,8 +184,9 @@ app.post("/add/jobs", async (req, res) => {
 
 app.get("/get/notAppliedJobs", async (req, res) => {
     try {
-        const userId = req.param('userId');
+        const userId = req.param('userid');
         const userSession = await userSessionsLib.getLatestUserSession(userId);
+        console.log("Session-> ",userSession)
         if (userSession !== enums.USER_SESSIONS.ACTIVE) {
             throw new Error("please login to access new jobs");
         }
@@ -185,6 +199,7 @@ app.get("/get/notAppliedJobs", async (req, res) => {
                 notAppliedJobs.push(jobs[job]);
             }
         }
+        console.log(notAppliedJobs.length);
         return res.json({ message: null, status: 'success', payload: notAppliedJobs });
     } catch (err) {
         console.log(err.message);
@@ -194,16 +209,17 @@ app.get("/get/notAppliedJobs", async (req, res) => {
 
 app.post("/apply/job", async (req, res) => {
     try {
-        const { userId, jobId } = req.body;// user want to apply for this jobId.
+        const { userid, jobid } = req.body;// user want to apply for this jobId.
         // create entry into document_verification table with status pending.
-        const documentVerification = await jobLib.insertIntoDocumentVerification(userId, jobId, enums.JOB_STATUSES.PENDING);
+        console.log("Entering in apply job",userid,jobid);
+        const documentVerification = await jobLib.insertIntoDocumentVerification(userid, jobid, enums.JOB_STATUSES.PENDING);
         const jobStatus = {
             level: enums.JOB_STATUS_LEVELS.DOCUMENT_VERIFICATION,
             status: enums.JOB_STATUSES.PENDING,
             message: 'Document verification stage is ' + (enums.JOB_STATUSES.PENDING).toLowerCase()
         }
         const redis = await redisLib.redisClient();
-        redis.set(enums.CURRENT_JOB_STATUS + '_' + jobId + '_' + userId, JSON.stringify(jobStatus));
+        redis.set(enums.CURRENT_JOB_STATUS + '_' + jobid + '_' + userid, JSON.stringify(jobStatus));
         return res.json({ message: 'job applied successfully', status: 'success', payload: null });
     } catch (err) {
         console.log(err.message);
@@ -215,7 +231,7 @@ app.post("/apply/job", async (req, res) => {
 
 app.get("/get/jobStatus", async (req, res) => {
     try {
-        const userId = req.param('userId');
+        const userId = req.param('userid');
         const userSession = await userSessionsLib.getLatestUserSession(userId);
         if (userSession !== enums.USER_SESSIONS.ACTIVE) {
             throw new Error("please login to access job status page");
@@ -231,7 +247,14 @@ app.get("/get/jobStatus", async (req, res) => {
             jobs[job].level = jobStatus.level;
             jobs[job].message = jobStatus.message;
         }
-        return res.json({ message: null, status: 'success', jobs, jobStatus: enums.JOB_STATUSES, jobLevels: enums.JOB_STATUS_LEVELS });
+        // console.log(jobs);
+        let jobLevels = [];
+        jobLevels.push("JOB APPLIED")
+        jobLevels.push(enums.JOB_STATUS_LEVELS.DOCUMENT_VERIFICATION);
+        jobLevels.push(enums.JOB_STATUS_LEVELS.BACKGROUND_CHECK);
+        jobLevels.push(enums.JOB_STATUS_LEVELS.SCHEDULED_INTERVIEWS);
+        jobLevels.push(enums.JOB_STATUS_LEVELS.HIRED);
+        return res.json({ message: null, status: 'success', jobs, jobStatus: enums.JOB_STATUSES, jobLevels });
     } catch (err) {
         console.log(err.message);
         return res.json({ message: err.message, status: 'failure', payload: null });
@@ -264,19 +287,27 @@ app.post("/update/scheduledInterviewStatus", async (req, res) => {
 app.patch("/profile/update", async (req, res) => {
     try {
 
+        console.log("I am here")
+
+
         const { firstname, lastname, phonenumber, email, dob, gender, age, mothername, fathername, city, presentaddress, pancard, adharcard, drivinglicense, qualification,
             experience, currentemployeer, currentjobrole, salarypermonth, languagecomfortable, resumelink,userid } = req.body;
 
+        console.log(req.body);
         const userSession = await userSessionsLib.getLatestUserSession(userid);
         if (userSession !== enums.USER_SESSIONS.ACTIVE) {
             throw new Error("please login to access profile page");
         }
 
         // check if city is present or not.
-        const cityid = await cityLib.getCityIdByName(city);
-        if (!cityid) {
-            throw new Error('city not found');
+        let cityid = null;
+        if (city !== null) {
+            cityid = await cityLib.getCityIdByName(city);
+            if (!cityid) {
+                throw new Error('city not found');
+            }
         }
+
 
         const user = await pool.query("UPDATE users set firstname=$1,lastname=$2,phonenumber=$3,email=$4," +
             "dob=$5,gender=$6,age=$7,mothername=$8,fathername=$9," +
@@ -292,8 +323,6 @@ app.patch("/profile/update", async (req, res) => {
                 salarypermonth, languagecomfortable, resumelink,userid]
         );
 
-        console.log(user.rows);
-
         return res.json({ message: 'Profile updated successfully', status: 'success', payload: null });
     } catch (err) {
         console.log(err.message);
@@ -304,8 +333,8 @@ app.patch("/profile/update", async (req, res) => {
 
 app.post("/profile/logout", async (req, res) => {
     try {
-
         const {userid } = req.body;
+        console.log("Logout: ",userid);
         // just make a entry into user sessions table with status closed.
         await userSessionsLib.insertIntoUserSessions(userid, enums.USER_SESSIONS.CLOSED);
         return res.json({ message: 'Profile logout successfully', status: 'success', payload: null });
@@ -318,8 +347,10 @@ app.post("/profile/logout", async (req, res) => {
 app.get("/profile/userDetails", async (req, res) => {
     try {
 
-        const userId = req.param('userId');
+        const userId = req.param('userid');
+        // console.log(userId);
         const user = await userLib.getUserByUserId(userId);
+        // console.log(user);
         return res.json({ message: null, status: 'success', payload: user });
     } catch (err) {
         console.log(err.message);
@@ -334,6 +365,7 @@ app.post("/refer", async (req, res) => {
     try {
 
         const {referrerUserId, referralPhoneNumber} = req.body;
+        console.log(referrerUserId,referralPhoneNumber)
         await referralLib.insertIntoReferrals(referrerUserId,referralPhoneNumber,enums.REFERRAL_STATUS.INITIATED)
         return res.json({ message: 'referred', status: 'success', payload: null });
     } catch (err) {
@@ -368,6 +400,19 @@ app.get("/countReferrals", async (req, res) => {
     }
 })
 
+
+
+// user sessions.
+app.get("/get/session", async (req, res) => {
+    try {
+        const userId = req.param('userid');
+        const userSession = await userSessionsLib.getLatestUserSession(userId);
+        return res.json({ message: null, status: 'success', payload: userSession });
+    } catch (err) {
+        console.log(err.message);
+        return res.json({ message: err.message, status: 'failure', payload: null });
+    }
+})
 
 
 app.listen(5000, () => {

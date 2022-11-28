@@ -38,6 +38,7 @@ async function documentVerificationScheduler() {
                 }
             }
           
+            console.log("Next job level",nextJobLevel);
             if(nextJobLevel === true){
                 // update documentverification status
                 await jobLib.updateDocumentVerificationStatus(enums.JOB_STATUSES.PASSED,documentVerification[i].userid,documentVerification[i].jobid);

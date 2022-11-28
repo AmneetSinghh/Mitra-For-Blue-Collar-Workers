@@ -85,5 +85,5 @@ async function backgroundCheckScheduler() {
 }
 
 
-cron.schedule("*/10 * * * * *", async () => backgroundCheckScheduler());// run every 10 seconds. in Actual we have to run 1 time in night in one day.
+// cron.schedule("*/10 * * * * *", async () => backgroundCheckScheduler());// run every 10 seconds. in Actual we have to run 1 time in night in one day.
 
